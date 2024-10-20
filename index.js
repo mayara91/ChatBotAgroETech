@@ -12,7 +12,7 @@ app.use(express.urlencoded({extended:true}));
 app.use("/servico",rotaServico);
 
 
-const host = "localhost";
+const host = "0.0.0.0";
 const porta = "3000";
 
 app.listen(porta, host, ()=>{

@@ -31,7 +31,7 @@ export default class ServicoDAO {
 
     async gravar(servico) {
         if (servico instanceof Servico) {
-            const sql = `INSERT INTO serviço(nome,descricao
+            const sql = `INSERT INTO servico(nome,descricao,
                                              valor,urlImagem,
                                              tempoInicioAtendimento,
                                              tempoSolucao)
@@ -50,7 +50,7 @@ export default class ServicoDAO {
 
     async alterar(servico) {
         if (servico instanceof Servico) {
-            const sql = `UPDATE SET servico nome = ? , descricao = ?
+            const sql = `UPDATE servico SET  nome = ? , descricao = ?,
                         valor = ?, urlImagem = ?, tempoInicioAtendimento = ?,
                         tempoSolucao = ?
                         WHERE id = ?`;
