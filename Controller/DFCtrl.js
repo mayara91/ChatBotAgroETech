@@ -1,4 +1,5 @@
 import { obterCardsServicos } from "../DialogFlow/funcoes.js";
+import Servico from "../Model/Servico.js";
 
 export default class DFController {
 
@@ -9,12 +10,17 @@ export default class DFController {
             //identificar a origem da requisição (custom ou messenger)
             //verificar a existência do atributo source
             const origem =  dados?.originalDetectIntentRequest?.source;
+            let resposta;
             switch (intencao) {
                 case 'Default Welcome Intent':
-                    const resposta = await exibirMenu(origem);
-                    resp.json(resposta);
+                    resposta = await exibirMenu(origem);
+                    break;
+                
+                case 'SelecaoSuporte':
+                    resposta = await processarEscolha(dados, origem);
                     break;
             }
+            resp.json(resposta);
         }
 
     } //fim processar intenções
@@ -25,7 +31,7 @@ async function exibirMenu(tipo = '') {
     let resposta = {
         "fulfillmentMessages": []
     };
-    
+
     if (tipo){
         tipo = 'custom';
     }
@@ -82,7 +88,7 @@ async function exibirMenu(tipo = '') {
                 "text": {
                     "text": ["Não foi possível recuperar a lista de suporte dos serviços disponíveis.",
                              "Descupe-nos pelo transtorno!",
-                             "Entre em contato conosco por telefone (18) 3226-1515."
+                             "Entre em contato conosco por telefone ☎ (18) 3226-1515."
                     ]
                 }
             });
@@ -95,7 +101,7 @@ async function exibirMenu(tipo = '') {
                         "title": "Não foi possível recuperar a lista de suporte dos serviços disponíveis.\n",
                         "text": [
                             "Descupe-nos pelo transtorno!\n",
-                            "Entre em contato conosco por telefone (18) 3226-1515.\n"
+                            "Entre em contato conosco por telefone ☎ (18) 3226-1515.\n"
                         ]
                     }]]
                 }
@@ -104,4 +110,58 @@ async function exibirMenu(tipo = '') {
         return resposta;
     }
 
+}
+
+async function processarEscolha(dados, origem){
+    
+    let resposta = {
+        "fulfillmentMessages": []
+    };
+
+    const sessao = dados.session.split('/').pop();
+    if (!global.dados){
+        global.dados={};
+    }
+    if (!global.dados[sessao]){
+        global.dados[sessao] = {
+            'servicos':[],
+        };
+    }
+    let servicosSelecionados = dados.queryResult.parameters.Servico
+    global.dados[sessao]['servicos'].push(...servicosSelecionados);
+    
+    let listaMensagens = [];
+    for (const serv of servicosSelecionados){
+        const servico = new Servico();
+        const resultado = await servico.consultar(serv);
+        if (resultado.length > 0){
+            listaMensagens.push(`✅ ${serv} registrado com sucesso! \n`);
+        }
+        else{
+            listaMensagens.push(`❌ O ${serv} não está disponível!\n`);
+        }
+    }
+
+    listaMensagens.push('Posso te ajudar em algo mais?\n')
+
+    if (origem){
+        resposta['fulfillmentMessages'].push({
+            "text": {
+                "text": [...listaMensagens]
+            }
+        })
+    }
+    else{
+        resposta.fulfillmentMessages.push({
+            "payload": {
+                "richContent": [[{
+                    "type": "description",
+                    "title": "",
+                    "text": [...listaMensagens]
+                }]]
+            }
+        });
+    }
+
+    return resposta;
 }

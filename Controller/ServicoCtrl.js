@@ -123,10 +123,10 @@ export default class ServicoCtrl {
     }
 
     consultar(requisicao, resposta) {
-
+        const termoBusca = requisicao.params.servico;
         if (requisicao.method == "GET") {
             const servico = new Servico(0);
-            servico.consultar().then((listaServicos) => {
+            servico.consultar(termoBusca).then((listaServicos) => {
                 resposta.status(200).json({
                     "status": true,
                     "listaServicos": listaServicos

@@ -5,6 +5,7 @@ const rotaServico = new Router();
 
 rotaServico
 .get("/", servCtrl.consultar)
+.get("/:servico", servCtrl.consultar)
 .post("/", servCtrl.gravar)
 .put("/",servCtrl.alterar)
 .patch("/",servCtrl.alterar)
