@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use("/servico",rotaServico);
 app.use("/webhook", rotaDF)
-
+app.use(express.static('./publico'));
 
 const host = "0.0.0.0";
 const porta = "3000";

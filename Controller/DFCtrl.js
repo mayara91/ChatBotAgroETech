@@ -1,4 +1,5 @@
 import { obterCardsServicos } from "../DialogFlow/funcoes.js";
+import Chamado from "../Model/Chamado.js";
 import Servico from "../Model/Servico.js";
 
 export default class DFController {
@@ -9,16 +10,25 @@ export default class DFController {
             const intencao = dados.queryResult.intent.displayName;
             //identificar a origem da requisição (custom ou messenger)
             //verificar a existência do atributo source
-            const origem =  dados?.originalDetectIntentRequest?.source;
+            const origem = dados?.originalDetectIntentRequest?.source;
             let resposta;
             switch (intencao) {
                 case 'Default Welcome Intent':
                     resposta = await exibirMenu(origem);
                     break;
-                
+
                 case 'SelecaoSuporte':
                     resposta = await processarEscolha(dados, origem);
                     break;
+                /*
+                case 'coletaDadosDemandante':
+                    resposta = await identificarUsuario(dados, origem);
+                    break;
+                */
+                case 'simConcluirDemanda':
+                    resposta = await registrarChamado(dados, origem);
+                    break;
+
             }
             resp.json(resposta);
         }
@@ -32,7 +42,7 @@ async function exibirMenu(tipo = '') {
         "fulfillmentMessages": []
     };
 
-    if (tipo){
+    if (tipo) {
         tipo = 'custom';
     }
 
@@ -82,18 +92,18 @@ async function exibirMenu(tipo = '') {
             return resposta;
         }
     }
-    catch(erro){
-        if (tipo == 'custom'){
+    catch (erro) {
+        if (tipo == 'custom') {
             resposta['fulfillmentMessages'].push({
                 "text": {
                     "text": ["Não foi possível recuperar a lista de suporte dos serviços disponíveis.",
-                             "Descupe-nos pelo transtorno!",
-                             "Entre em contato conosco por telefone ☎ (18) 3226-1515."
+                        "Descupe-nos pelo transtorno!",
+                        "Entre em contato conosco por telefone ☎ (18) 3226-1515."
                     ]
                 }
             });
         }
-        else{ //formato de mensagem para messenger
+        else { //formato de mensagem para messenger
             resposta.fulfillmentMessages.push({
                 "payload": {
                     "richContent": [[{
@@ -112,46 +122,46 @@ async function exibirMenu(tipo = '') {
 
 }
 
-async function processarEscolha(dados, origem){
-    
+async function processarEscolha(dados, origem) {
+
     let resposta = {
         "fulfillmentMessages": []
     };
 
     const sessao = dados.session.split('/').pop();
-    if (!global.dados){
-        global.dados={};
+    if (!global.dados) {
+        global.dados = {};
     }
-    if (!global.dados[sessao]){
+    if (!global.dados[sessao]) {
         global.dados[sessao] = {
-            'servicos':[],
+            'servicos': [],
         };
     }
     let servicosSelecionados = dados.queryResult.parameters.Servico
     global.dados[sessao]['servicos'].push(...servicosSelecionados);
-    
+
     let listaMensagens = [];
-    for (const serv of servicosSelecionados){
+    for (const serv of servicosSelecionados) {
         const servico = new Servico();
         const resultado = await servico.consultar(serv);
-        if (resultado.length > 0){
+        if (resultado.length > 0) {
             listaMensagens.push(`✅ ${serv} registrado com sucesso! \n`);
         }
-        else{
+        else {
             listaMensagens.push(`❌ O ${serv} não está disponível!\n`);
         }
     }
 
     listaMensagens.push('Posso te ajudar em algo mais?\n')
 
-    if (origem){
+    if (origem) {
         resposta['fulfillmentMessages'].push({
             "text": {
                 "text": [...listaMensagens]
             }
         })
     }
-    else{
+    else {
         resposta.fulfillmentMessages.push({
             "payload": {
                 "richContent": [[{
@@ -164,4 +174,53 @@ async function processarEscolha(dados, origem){
     }
 
     return resposta;
+}
+
+async function registrarChamado(dados, origem) {
+    const sessao = dados.session.split('/').pop();
+    //Fique atento, será necessário recuperar o usuário identificado na sessão
+    //simulando a existência de um usuário cadastrado....
+    const usuario = {
+        "cpf": "111.111.111-11"
+    }
+    let listaDeServicos = [];
+    const servicosSelecionados = global.dados[sessao]['servicos'];
+    const servicoM = new Servico();
+    for (const serv of servicosSelecionados) {
+        const busca = await servicoM.consultar(serv);
+        if (busca.length > 0) {
+            listaDeServicos.push(busca[0]); //primeiro serviço da lista 
+        }
+    }
+    const chamado = new Chamado(0, '', usuario, listaDeServicos);
+    await chamado.gravar();
+
+    let resposta = {
+        "fulfillmentMessages": []
+    };
+
+    if (origem) {
+        resposta['fulfillmentMessages'].push({
+            "text": {
+                "text": [`Chamado nº ${chamado.numero} registrado com sucesso. \n`,
+                    "Anote o número para consulta ou acompanhamento posterior.\n"
+                ]
+            }
+        })
+    }
+    else {
+        resposta.fulfillmentMessages.push({
+            "payload": {
+                "richContent": [[{
+                    "type": "description",
+                    "title": "",
+                    "text": [`Chamado nº ${chamado.numero} registrado com sucesso. \n`,
+                        "Anote o número para consulta ou acompanhamento posterior.\n"
+                    ]
+                }]]
+            }
+        });
+    }
+    return resposta;
+
 }
