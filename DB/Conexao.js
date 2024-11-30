@@ -1,4 +1,3 @@
-import mysql from 'mysql2/promise';
 
 /*
 
@@ -10,25 +9,22 @@ DB_PASSWORD=
 DB_DATABASE=chatbot
 
 */
-export default async function conectar(){
-    if (global.poolConexoes){
-        return await global.poolConexoes.getConnection();
-    }
-    else{
-        const pool = mysql.createPool({
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER, 
-            password:process.env.DB_PASSWORD,  
-            database: process.env.DB_DATABASE,
-            connectionLimit: 50,
-            maxIdle: 30, // max idle connections, the default value is the same as `connectionLimit`
-            idleTimeout: 60000, // idle connections timeout, in milliseconds, the default value 60000
-            queueLimit: 0,
-            enableKeepAlive: true,
-            keepAliveInitialDelay: 0,
-          });
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
 
-          global.poolConexoes = pool;
-          return await global.poolConexoes.getConnection();
+// Connect to SQLite instead of MySQL
+
+export default async function conectar() {
+    if (global.dbConnection) {
+        return global.dbConnection;
+    } else {
+        // Open a connection to SQLite database
+        const db = await open({
+            filename: process.env.DB_DATABASE || './database.sqlite', // Specify the path to the SQLite file
+            driver: sqlite3.Database,
+        });
+
+        global.dbConnection = db;
+        return global.dbConnection;
     }
 }
